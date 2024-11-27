@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + Vue + TS</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script src="http://localhost:8098"></script>
+  <script type="module" src="/src/main.ts"></script>
+  <script>
+    (function () {
+      const originalHook = window.__VUE_DEVTOOLS_GLOBAL_HOOK__;
+
+      if (originalHook) {
+        const originalEmit = originalHook.emit;
+
+        originalHook.emit = function (event, ...args) {
+          if (event.endsWith('init')) {
+            const [app] = args;
+            console.log(app, event)
+            const componentTree = app._instance ? app._instance.subTree : app._vnode;
+
+            function getComponentTree(vnode, depth = 0) {
+              if (!vnode) return;
+              const { type, component, el, children, child } = vnode;
+
+              if (component) {
+                if (component.type.__file) {
+                  console.log('Source:', component.type.__scopeId, component.type.__file);
+                }
+              }
+
+              // 递归遍历子节点
+              const vChildren = children || (child ? [child] : []);
+              vChildren.forEach((child) => getComponentTree(child, depth + 1));
+            }
+
+            getComponentTree(componentTree);
+          }
+
+          originalEmit.apply(this, [event, ...args]);
+        };
+      } else {
+        console.warn('Vue Devtools not found.');
+      }
+    })();
+  </script>
+</body>
+
+</html>
