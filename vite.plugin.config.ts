@@ -1,11 +1,9 @@
 import { defineConfig } from 'vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 import dts from 'vite-plugin-dts';
 
 export default defineConfig({
   plugins: [
-    svelte(),
     dts({
       include: ['src/plugin/**/*.ts'],
       outDir: 'dist',
@@ -19,7 +17,7 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['vite', 'svelte'],
+      external: ['vite', '@vue/compiler-sfc', 'magic-string'],
     },
   },
 });

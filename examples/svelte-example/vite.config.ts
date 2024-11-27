@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import vtjump from '../../dist/index';
+import vtjump from '../../src/plugin/index';
 
 export default defineConfig({
   plugins: [
