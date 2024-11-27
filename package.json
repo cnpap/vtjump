@@ -1,7 +1,7 @@
 {
   "name": "vtjump",
   "private": false,
-  "version": "0.0.1",
+  "version": "1.0.1",
   "description": "A vite plugin for vtjump",
   "type": "module",
   "main": "dist/index.js",
@@ -12,8 +12,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:plugin": "vite build --config vite.plugin.config.ts",
+    "build": "vite build --config vite.plugin.config.ts",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "format": "prettier --write .",
