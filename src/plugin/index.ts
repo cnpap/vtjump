@@ -516,7 +516,6 @@ export default function vtjump(options: VTJumpOptions = {}): Plugin {
 
         function traverseNode(node: any) {
           if (node.type === 1 && isHTMLTag(node.tag)) {
-            console.log('Processing HTML tag:', node.tag);
             const startLine = templateStartLine + node.loc.start.line - 1;
             const endLine = templateStartLine + node.loc.end.line - 1;
             if (template && template.loc) {
@@ -535,7 +534,6 @@ export default function vtjump(options: VTJumpOptions = {}): Plugin {
 
         if (compiled.ast) {
           compiled.ast.children.forEach((node: any) => traverseNode(node));
-          console.log('Template transformation complete');
         }
 
         return {
@@ -545,12 +543,10 @@ export default function vtjump(options: VTJumpOptions = {}): Plugin {
       }
     },
     transformIndexHtml(html: string) {
-      console.log('Transforming HTML...');
       const injectedHtml = html.replace(
         '</body>',
         `${createOverlayStyles()}${createOverlayScript(options)}${createEmptyContainer()}${injectScript}</body>`
       );
-      console.log('HTML transformation complete');
       return injectedHtml;
     },
   };
