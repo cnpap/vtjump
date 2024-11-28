@@ -6,8 +6,6 @@ export default defineConfig({
   plugins: [
     vtjump({
       protocol: 'windsurf',
-      modalTitle: 'Vue Example',
-      modalContent: 'This is the Vue example with vtjump plugin.',
     }),
     vue(),
   ],

@@ -6,8 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     vtjump({
-      modalTitle: 'React Example',
-      modalContent: 'This is the React example with vtjump plugin.',
+      protocol: 'windsurf',
     }),
   ],
   test: {
