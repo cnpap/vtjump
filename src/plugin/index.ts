@@ -381,7 +381,8 @@ const createOverlayScript = (options: VTJumpOptions) => `
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Control') {
+    // 支持 Control 键和 Command 键 (macOS)
+    if (e.key === 'Control' || (e.key === 'Meta' && /Mac|iPod|iPhone|iPad/.test(navigator.platform))) {
       isCtrlPressed = true;
       document.body.style.cursor = 'crosshair';
       if (lastHoverTarget) {
@@ -400,7 +401,8 @@ const createOverlayScript = (options: VTJumpOptions) => `
   });
 
   document.addEventListener('keyup', (e) => {
-    if (e.key === 'Control') {
+    // 支持 Control 键和 Command 键 (macOS)
+    if (e.key === 'Control' || (e.key === 'Meta' && /Mac|iPod|iPhone|iPad/.test(navigator.platform))) {
       isCtrlPressed = false;
       document.body.style.cursor = '';
       if (overlay) {

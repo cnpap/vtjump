@@ -1,7 +1,7 @@
 {
   "name": "vtjump",
   "private": false,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A vite plugin for vtjump",
   "type": "module",
   "main": "dist/index.js",
@@ -43,7 +43,7 @@
     "vite-plugin-dts": "^3.7.3"
   },
   "peerDependencies": {
-    "vite": "^5.0.0"
+    "vite": "^5.0.0 || ^6.0.0"
   },
   "keywords": [
     "vite",
