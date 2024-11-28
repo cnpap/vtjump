@@ -494,14 +494,12 @@ export default function vtjump(options: VTJumpOptions = {}): Plugin {
   return {
     name: 'vite-plugin-vtjump',
     transform(code: string, id: string) {
-      console.log('Transform file:', id);
       if (!id.endsWith('.vue')) return;
 
       const { descriptor } = parse(code);
       const { template } = descriptor;
 
       if (template) {
-        console.log('Found template in:', id);
         const s = new MagicString(code);
         const templateStartLine = template.loc.start.line;
 
