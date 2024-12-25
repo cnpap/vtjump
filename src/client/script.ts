@@ -7,7 +7,25 @@ import './styles.css';
   let currentTarget: HTMLElement | null = null;
   let lastHoverTarget: HTMLElement | null = null;
   let lastValidTarget: HTMLElement | null = null;
-  let config: { ide?: string } | null = null;
+  let config: { ide?: string; workingDir?: string } | null = null;
+
+  async function fetchConfig(): Promise<void> {
+    try {
+      const response = await fetch('/__vtjump', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ getConfig: true })
+      });
+      
+      if (response.ok) {
+        config = await response.json();
+      }
+    } catch (error) {
+      console.error('Failed to fetch config:', error);
+    }
+  }
 
   async function showOverlay(target: HTMLElement | null): Promise<void> {
     if (!target) {
@@ -24,7 +42,7 @@ import './styles.css';
     const vtjumpLine = target.getAttribute('data-vtjump-line');
     const vtjumpFile = target.getAttribute('data-vtjump-file');
 
-    if (!vtjumpId || !vtjumpLine || !vtjumpFile) {
+    if (!vtjumpId || !vtjumpLine || !vtjumpFile || !config) {
       return;
     }
 
@@ -41,8 +59,6 @@ import './styles.css';
     }
 
     const rect = target.getBoundingClientRect();
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
 
     overlay.style.cssText = `
       display: block;
@@ -53,7 +69,11 @@ import './styles.css';
       height: ${rect.height}px;
     `;
 
-    const fileName = vtjumpFile.split('/').pop() || vtjumpFile;
+    // 从完整路径中移除项目根目录前缀
+    let displayPath = vtjumpFile;
+    if (config.workingDir && vtjumpFile.startsWith(config.workingDir)) {
+      displayPath = vtjumpFile.slice(config.workingDir.length).replace(/^\/+/, '');
+    }
 
     info.innerHTML = `
       <div class="vtjump-info-content">
@@ -64,7 +84,7 @@ import './styles.css';
           </svg>
         </div>
         <div class="vtjump-info-text">
-          <span class="vtjump-info-file">${fileName}</span>
+          <span class="vtjump-info-file">${displayPath}</span>
           <span class="vtjump-info-separator">:</span>
           <span class="vtjump-info-line">${vtjumpLine}</span>
         </div>
@@ -95,12 +115,8 @@ import './styles.css';
     const vtjumpLine = target.getAttribute('data-vtjump-line');
     const vtjumpFile = target.getAttribute('data-vtjump-file');
     
-    if (!vtjumpId || !vtjumpLine || !vtjumpFile) {
+    if (!vtjumpId || !vtjumpLine || !vtjumpFile || !config) {
       return;
-    }
-
-    if (!config) {
-      await fetchConfig();
     }
 
     if (clientX !== null && clientY !== null) {
@@ -132,44 +148,17 @@ import './styles.css';
     setTimeout(() => toast.remove(), 1800);
 
     try {
-      const response = await fetch('/__vtjump', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          id: vtjumpId,
-          jump: true,
-          file: vtjumpFile,
-          line: vtjumpLine
-        })
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to jump to location');
-      }
+      const protocol = config.ide || 'vscode';
+      // 跳转时使用完整路径
+      const url = `${protocol}://file/${vtjumpFile}:${vtjumpLine}`;
+      window.open(url);
     } catch (error) {
       console.error('Failed to execute jump:', error);
     }
   }
 
-  async function fetchConfig(): Promise<void> {
-    try {
-      const response = await fetch('/__vtjump', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ getConfig: true })
-      });
-      
-      if (response.ok) {
-        config = await response.json();
-      }
-    } catch (error) {
-      console.error('Failed to fetch config:', error);
-    }
-  }
+  // 在页面加载时获取配置
+  fetchConfig();
 
   document.addEventListener('keydown', (e: KeyboardEvent) => {
     // Support Control key and Command key (macOS)

@@ -50,56 +50,68 @@ const vtjump = (options: VTJumpOptions = {}): Plugin => {
           req.on('data', chunk => chunks.push(chunk));
           req.on('end', () => {
             const data = JSON.parse(Buffer.concat(chunks).toString());
+            const { getConfig } = data;
+            
+            if (getConfig) {
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({
+                ide: options.protocol || 'vscode',
+                workingDir: process.cwd()
+              }));
+              return;
+            }
+
             const { id, getInfo } = data;
             const location = locationMap.get(id);
             
-            if (location) {
-              if (getInfo) {
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ location }));
-              } else {
-                const protocol = options.protocol || 'vscode';
-                const filePath = `${location.file}:${location.startLine}`;
-
-                if (options.clientSideOpen) {
-                  // 让客户端处理跳转
-                  res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ url: `${protocol}://file/${filePath}` }));
-                } else {
-                  // 服务器端处理跳转
-                  const url = `${protocol}://file/${filePath}`;
-
-                  // 首先尝试使用系统命令打开
-                  const command = process.platform === 'win32' ? 
-                    `start ${url}` : 
-                    process.platform === 'darwin' ? 
-                      `open "${url}"` : 
-                      `xdg-open "${url}"`;
-                  
-                  child_process.exec(command, (error) => {
-                    if (error) {
-                      console.warn('Failed to open URL with system command:', error);
-                      
-                      // 如果系统命令失败，尝试直接使用协议
-                      const fallbackCommand = `${protocol} "${filePath}"`;
-                      child_process.exec(fallbackCommand, (fallbackError) => {
-                        if (fallbackError) {
-                          console.error('Failed to open with protocol command:', fallbackError);
-                          res.statusCode = 500;
-                          res.end(JSON.stringify({ error: 'Failed to open file' }));
-                        } else {
-                          res.end(JSON.stringify({ success: true }));
-                        }
-                      });
-                    } else {
-                      res.end(JSON.stringify({ success: true }));
-                    }
-                  });
-                }
-              }
-            } else {
+            if (!location) {
               res.statusCode = 404;
               res.end(JSON.stringify({ error: 'Location not found' }));
+              return;
+            }
+
+            if (getInfo) {
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ location }));
+            } else {
+              const protocol = options.protocol || 'vscode';
+              const filePath = `${location.file}:${location.startLine}`;
+
+              if (options.clientSideOpen) {
+                // 让客户端处理跳转
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ url: `${protocol}://file/${filePath}` }));
+              } else {
+                // 服务器端处理跳转
+                const url = `${protocol}://file/${filePath}`;
+
+                // 首先尝试使用系统命令打开
+                const command = process.platform === 'win32' ? 
+                  `start ${url}` : 
+                  process.platform === 'darwin' ? 
+                    `open "${url}"` : 
+                    `xdg-open "${url}"`;
+                
+                child_process.exec(command, (error) => {
+                  if (error) {
+                    console.warn('Failed to open URL with system command:', error);
+                    
+                    // 如果系统命令失败，尝试直接使用协议
+                    const fallbackCommand = `${protocol} "${filePath}"`;
+                    child_process.exec(fallbackCommand, (fallbackError) => {
+                      if (fallbackError) {
+                        console.error('Failed to open with protocol command:', fallbackError);
+                        res.statusCode = 500;
+                        res.end(JSON.stringify({ error: 'Failed to open file' }));
+                      } else {
+                        res.end(JSON.stringify({ success: true }));
+                      }
+                    });
+                  } else {
+                    res.end(JSON.stringify({ success: true }));
+                  }
+                });
+              }
             }
           });
           return;
