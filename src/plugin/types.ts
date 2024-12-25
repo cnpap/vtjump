@@ -1,8 +1,16 @@
 import type { PluginOption } from 'vite';
 
 export interface VTJumpOptions {
-  // 可以在这里添加插件的配置选项
-  protocol?: 'vscode' | 'windsurf' | string; // 添加协议选项，默认为 'vscode'
+  /**
+   * IDE protocol to use (e.g., 'vscode', 'idea')
+   */
+  protocol?: string;
+
+  /**
+   * Whether to open the file in the browser (true) or let the server handle it (false)
+   * @default false
+   */
+  clientSideOpen?: boolean;
 }
 
 // 移除默认导出声明，因为实现在 index.ts 中

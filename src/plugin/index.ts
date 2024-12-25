@@ -1,77 +1,164 @@
-import type { Plugin } from 'vite';
+import type { Plugin, ViteDevServer } from 'vite';
 import type { VTJumpOptions } from './types';
-import { parse, compileTemplate } from '@vue/compiler-sfc';
-import vtjump from '../inject/index';
-import { styles } from '../shared/styles';
+import { parse } from '@vue/compiler-sfc';
+import styleRaw from '@client/client-style.css?raw';
+import scriptRaw from '@client/client-script.js?raw';
+import child_process from 'child_process';
 
-export default function VTJumpPlugin(options: VTJumpOptions = {}): Plugin {
-  let config: any;
+// 存储位置映射关系
+const locationMap = new Map<string, { file: string; startLine: number; endLine: number }>();
+let idCounter = 0;
+
+function generateId(filePath: string, line: number): string {
+  const id = `vtj-${++idCounter}`;
+  locationMap.set(id, {
+    file: filePath,
+    startLine: line,
+    endLine: line
+  });
+  return id;
+}
+
+const createOverlayStyles = () => `
+<style>
+${styleRaw}
+</style>
+`;
+
+const createOverlayScript = () => `
+<script>
+${scriptRaw}
+</script>
+`;
+
+function isHTMLTag(tag: string): boolean {
+  return !/[A-Z]/.test(tag);
+}
+
+const vtjump = (options: VTJumpOptions = {}): Plugin => {
+  let server: ViteDevServer;
 
   return {
-    name: 'vite-plugin-vtjump',
-    configResolved(resolvedConfig) {
-      config = resolvedConfig;
-    },
-    configureServer(server) {
-      // 在开发服务器启动时注入脚本
-      server.middlewares.use((req, res, next) => {
-        if (req.url?.endsWith('.html')) {
-          res.setHeader('Content-Type', 'text/html');
-          const html = `
-            <script type="module">
-              (${vtjump.initialize.toString()})(${JSON.stringify(options)});
-            </script>
-          `;
-          res.end(html);
-        } else {
-          next();
+    name: 'vite:vtjump',
+    configureServer(_server) {
+      server = _server;
+      
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url === '/__vtjump') {
+          const chunks: Buffer[] = [];
+          req.on('data', chunk => chunks.push(chunk));
+          req.on('end', () => {
+            const data = JSON.parse(Buffer.concat(chunks).toString());
+            const { id, getInfo } = data;
+            const location = locationMap.get(id);
+            
+            if (location) {
+              if (getInfo) {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ location }));
+              } else {
+                const protocol = options.protocol || 'vscode';
+                const filePath = `${location.file}:${location.startLine}`;
+
+                if (options.clientSideOpen) {
+                  // 让客户端处理跳转
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ url: `${protocol}://file/${filePath}` }));
+                } else {
+                  // 服务器端处理跳转
+                  const url = `${protocol}://file/${filePath}`;
+
+                  // 首先尝试使用系统命令打开
+                  const command = process.platform === 'win32' ? 
+                    `start ${url}` : 
+                    process.platform === 'darwin' ? 
+                      `open "${url}"` : 
+                      `xdg-open "${url}"`;
+                  
+                  child_process.exec(command, (error) => {
+                    if (error) {
+                      console.warn('Failed to open URL with system command:', error);
+                      
+                      // 如果系统命令失败，尝试直接使用协议
+                      const fallbackCommand = `${protocol} "${filePath}"`;
+                      child_process.exec(fallbackCommand, (fallbackError) => {
+                        if (fallbackError) {
+                          console.error('Failed to open with protocol command:', fallbackError);
+                          res.statusCode = 500;
+                          res.end(JSON.stringify({ error: 'Failed to open file' }));
+                        } else {
+                          res.end(JSON.stringify({ success: true }));
+                        }
+                      });
+                    } else {
+                      res.end(JSON.stringify({ success: true }));
+                    }
+                  });
+                }
+              }
+            } else {
+              res.statusCode = 404;
+              res.end(JSON.stringify({ error: 'Location not found' }));
+            }
+          });
+          return;
         }
+        next();
       });
     },
-    transform(code, id) {
-      // 只处理 Vue 文件
+    transform(code: string, id: string) {
       if (!id.endsWith('.vue')) return;
 
-      try {
-        // 处理 Vue 文件
-        const { descriptor } = parse(code);
-        if (descriptor.template) {
-          const template = descriptor.template.content;
-          const compiled = compileTemplate({
-            source: template,
-            filename: id,
-            id: id,
-          });
+      const { descriptor } = parse(code);
+      if (!descriptor.template) return;
 
-          // 添加跳转属性
-          return `<template><div data-file="${id}" data-start-line="1" data-end-line="1">${code}</div></template>`;
-        }
-      } catch (e) {
-        console.error('Failed to transform file:', e);
-        return code;
+      const ms = new MagicString(code);
+      const templateContent = descriptor.template.content;
+      const templateStartLine = descriptor.template.loc.start.line;
+      const templateStartOffset = descriptor.template.loc.start.offset;
+
+      // 使用正则表达式匹配开始标签
+      const startTagRE = /<(\w+)([^>]*)>/g;
+      let match;
+
+      while ((match = startTagRE.exec(templateContent)) !== null) {
+        const [fullMatch, tagName, attributes] = match;
+        if (!isHTMLTag(tagName)) continue;
+        if (attributes.includes('data-vtjump')) continue;
+
+        // 计算当前标签在源文件中的位置
+        const tagOffset = templateStartOffset + match.index;
+        const contentBeforeTag = code.slice(0, tagOffset);
+        const currentLine = contentBeforeTag.split('\n').length;
+
+        // 生成唯一ID
+        const vtjumpId = generateId(id, currentLine);
+
+        // 在标签结束之前插入属性
+        const insertPos = tagOffset + tagName.length + 1;
+        ms.appendLeft(insertPos, ` data-vtjump="${vtjumpId}"`);
       }
 
-      return code;
+      return {
+        code: ms.toString(),
+        map: ms.generateMap()
+      };
     },
     transformIndexHtml(html) {
-      // 在 HTML 文件中注入样式和初始化代码
-      const initCode = `(${vtjump.initialize.toString()})(${JSON.stringify(options)})`;
-      
+      const ms = new MagicString(html);
+      const bodyMatch = html.match(/<\/body>/i);
+      if (bodyMatch) {
+        ms.appendLeft(
+          bodyMatch.index!,
+          `${createOverlayStyles()}${createOverlayScript()}</body>`
+        );
+      }
       return {
-        html,
-        tags: [
-          {
-            tag: 'style',
-            children: styles,
-            injectTo: 'head'
-          },
-          {
-            tag: 'script',
-            children: initCode,
-            injectTo: 'body'
-          }
-        ]
+        html: ms.toString(),
+        tags: []
       };
-    }
+    },
   };
-}
+};
+
+export default vtjump;

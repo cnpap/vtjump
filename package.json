@@ -1,7 +1,7 @@
 {
   "name": "vtjump",
   "private": false,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A vite plugin for vtjump",
   "type": "module",
   "main": "dist/index.js",
@@ -12,9 +12,9 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:plugin && npm run build:inject",
+    "build:client": "vite build",
     "build:plugin": "vite build --config vite.plugin.config.ts",
-    "build:inject": "vite build --config vite.inject.config.ts",
+    "build": "npm run build:client && npm run build:plugin",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "format": "prettier --write .",
@@ -23,7 +23,7 @@
     "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "preversion": "npm run check",
-    "version": "npm run build && git add -A dist",
+    "version": "npm run build && git add -f dist",
     "postversion": "git push && git push --tags",
     "publish:patch": "npm version patch && npm publish",
     "publish:minor": "npm version minor && npm publish",
@@ -40,6 +40,7 @@
     "rimraf": "^5.0.5",
     "svelte": "^4.2.12",
     "svelte-check": "^3.6.4",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
     "vite-plugin-dts": "^3.7.3"
