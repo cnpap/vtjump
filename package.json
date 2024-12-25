@@ -23,7 +23,7 @@
     "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "preversion": "npm run check",
-    "version": "npm run build && git add -A dist",
+    "version": "npm run build && git add -f dist",
     "postversion": "git push && git push --tags",
     "publish:patch": "npm version patch && npm publish",
     "publish:minor": "npm version minor && npm publish",
