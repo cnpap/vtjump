@@ -1,4 +1,4 @@
-import type { Plugin } from 'vite';
+import type { Plugin, ViteDevServer } from 'vite';
 import type { VTJumpOptions } from './types';
 import MagicString from 'magic-string';
 import { parse, compileTemplate } from '@vue/compiler-sfc';
@@ -21,9 +21,32 @@ function isHTMLTag(tag: string): boolean {
   return !/[A-Z]/.test(tag);
 }
 
-export default function vtjump(options: VTJumpOptions = {}): Plugin {
+const vtjump = (options: VTJumpOptions = {}): Plugin => {
+  let server: ViteDevServer;
+
   return {
-    name: 'vite-plugin-vtjump',
+    name: 'vite:vtjump',
+    configureServer(_server) {
+      server = _server;
+      
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url === '/__vtjump') {
+          const chunks: Buffer[] = [];
+          req.on('data', chunk => chunks.push(chunk));
+          req.on('end', () => {
+            const data = JSON.parse(Buffer.concat(chunks).toString());
+            const { file, line } = data;
+            const protocol = options.protocol || 'vscode';
+            const url = `${protocol}://file/${file}:${line}`;
+            
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ url }));
+          });
+          return;
+        }
+        next();
+      });
+    },
     transform(code: string, id: string) {
       if (!id.endsWith('.vue')) return;
 
@@ -89,3 +112,5 @@ export default function vtjump(options: VTJumpOptions = {}): Plugin {
     },
   };
 }
+
+export default vtjump;

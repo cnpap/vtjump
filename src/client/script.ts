@@ -1,9 +1,5 @@
 import './styles.css';
 
-interface VTJumpOptions {
-  protocol?: string;
-}
-
 (() => {
   let overlay: HTMLDivElement | null = null;
   let info: HTMLDivElement | null = null;
@@ -12,7 +8,7 @@ interface VTJumpOptions {
   let lastHoverTarget: HTMLElement | null = null;
   let lastValidTarget: HTMLElement | null = null;
 
-  function executeJump(target: HTMLElement, clientX: number | null = null, clientY: number | null = null): void {
+  async function executeJump(target: HTMLElement, clientX: number | null = null, clientY: number | null = null): Promise<void> {
     const startLine = target.getAttribute('data-start-line');
     const file = target.getAttribute('data-file');
     if (startLine && file) {
@@ -47,14 +43,28 @@ interface VTJumpOptions {
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 1800);
 
-      const link = document.createElement('a');
-      link.href = createJumpUrl(file, startLine);
-      link.click();
+      try {
+        const response = await fetch('/__vtjump', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            file,
+            line: startLine
+          })
+        });
+        
+        if (response.ok) {
+          const { url } = await response.json();
+          if (url) {
+            window.location.href = url;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to execute jump:', error);
+      }
     }
-  }
-
-  function createJumpUrl(file: string, line: string): string {
-    return `windsurf://file/${file}:${line}`;
   }
 
   function showOverlay(target: HTMLElement | null): void {
