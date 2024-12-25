@@ -19,5 +19,11 @@ export default defineConfig({
     rollupOptions: {
       external: ['vite', '@vue/compiler-sfc', 'magic-string'],
     },
+    emptyOutDir: false,
   },
+  resolve: {
+    alias: {
+      '@client': resolve(__dirname, 'dist/client')
+    }
+  }
 });

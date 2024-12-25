@@ -1,3 +1,5 @@
+import './styles.css';
+
 interface VTJumpOptions {
   protocol?: string;
 }
@@ -204,6 +206,22 @@ interface VTJumpOptions {
       e.preventDefault();
       e.stopPropagation();
       executeJump(currentTarget, e.clientX, e.clientY);
+      
+      // Reset state after jump
+      isCtrlPressed = false;
+      document.body.style.cursor = '';
+      if (overlay) {
+        overlay.remove();
+        overlay = null;
+      }
+      if (info) {
+        info.remove();
+        info = null;
+      }
+      currentTarget = null;
+      lastHoverTarget = null;
+      lastValidTarget = null;
     }
   });
+
 })();
