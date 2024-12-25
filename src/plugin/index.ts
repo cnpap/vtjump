@@ -17,18 +17,6 @@ ${scriptRaw}
 </script>
 `;
 
-const createEmptyContainer = () => `
-<div id="vtjump-container"></div>
-`;
-
-const injectScript = `
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // Empty initialization script
-  });
-</script>
-`;
-
 function isHTMLTag(tag: string): boolean {
   return !/[A-Z]/.test(tag);
 }
@@ -91,7 +79,7 @@ export default function vtjump(options: VTJumpOptions = {}): Plugin {
       if (bodyMatch) {
         ms.appendLeft(
           bodyMatch.index!,
-          `${createOverlayStyles()}${createOverlayScript()}${createEmptyContainer()}${injectScript}</body>`
+          `${createOverlayStyles()}${createOverlayScript()}</body>`
         );
       }
       return {
