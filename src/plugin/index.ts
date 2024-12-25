@@ -1,9 +1,24 @@
 import type { Plugin, ViteDevServer } from 'vite';
 import type { VTJumpOptions } from './types';
 import MagicString from 'magic-string';
-import { parse, compileTemplate } from '@vue/compiler-sfc';
+import { parse } from '@vue/compiler-sfc';
 import styleRaw from '@client/client-style.css?raw';
 import scriptRaw from '@client/client-script.js?raw';
+import child_process from 'child_process';
+
+// 存储位置映射关系
+const locationMap = new Map<string, { file: string; startLine: number; endLine: number }>();
+let idCounter = 0;
+
+function generateId(filePath: string, line: number): string {
+  const id = `vtj-${++idCounter}`;
+  locationMap.set(id, {
+    file: filePath,
+    startLine: line,
+    endLine: line
+  });
+  return id;
+}
 
 const createOverlayStyles = () => `
 <style>
@@ -35,12 +50,57 @@ const vtjump = (options: VTJumpOptions = {}): Plugin => {
           req.on('data', chunk => chunks.push(chunk));
           req.on('end', () => {
             const data = JSON.parse(Buffer.concat(chunks).toString());
-            const { file, line } = data;
-            const protocol = options.protocol || 'vscode';
-            const url = `${protocol}://file/${file}:${line}`;
+            const { id, getInfo } = data;
+            const location = locationMap.get(id);
             
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ url }));
+            if (location) {
+              if (getInfo) {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ location }));
+              } else {
+                const protocol = options.protocol || 'vscode';
+                const filePath = `${location.file}:${location.startLine}`;
+
+                if (options.clientSideOpen) {
+                  // 让客户端处理跳转
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ url: `${protocol}://file/${filePath}` }));
+                } else {
+                  // 服务器端处理跳转
+                  const url = `${protocol}://file/${filePath}`;
+
+                  // 首先尝试使用系统命令打开
+                  const command = process.platform === 'win32' ? 
+                    `start ${url}` : 
+                    process.platform === 'darwin' ? 
+                      `open "${url}"` : 
+                      `xdg-open "${url}"`;
+                  
+                  child_process.exec(command, (error) => {
+                    if (error) {
+                      console.warn('Failed to open URL with system command:', error);
+                      
+                      // 如果系统命令失败，尝试直接使用协议
+                      const fallbackCommand = `${protocol} "${filePath}"`;
+                      child_process.exec(fallbackCommand, (fallbackError) => {
+                        if (fallbackError) {
+                          console.error('Failed to open with protocol command:', fallbackError);
+                          res.statusCode = 500;
+                          res.end(JSON.stringify({ error: 'Failed to open file' }));
+                        } else {
+                          res.end(JSON.stringify({ success: true }));
+                        }
+                      });
+                    } else {
+                      res.end(JSON.stringify({ success: true }));
+                    }
+                  });
+                }
+              }
+            } else {
+              res.statusCode = 404;
+              res.end(JSON.stringify({ error: 'Location not found' }));
+            }
           });
           return;
         }
@@ -51,52 +111,41 @@ const vtjump = (options: VTJumpOptions = {}): Plugin => {
       if (!id.endsWith('.vue')) return;
 
       const { descriptor } = parse(code);
-      const { template } = descriptor;
+      if (!descriptor.template) return;
 
-      if (template) {
-        const s = new MagicString(code);
-        const templateStartLine = template.loc.start.line;
+      const ms = new MagicString(code);
+      const templateContent = descriptor.template.content;
+      const templateStartLine = descriptor.template.loc.start.line;
+      const templateStartOffset = descriptor.template.loc.start.offset;
 
-        const compiled = compileTemplate({
-          source: template.content,
-          filename: id,
-          id: id,
-        });
+      // 使用正则表达式匹配开始标签
+      const startTagRE = /<(\w+)([^>]*)>/g;
+      let match;
 
-        if (compiled.errors.length) {
-          console.error('Template compilation errors:', compiled.errors);
-          return;
-        }
+      while ((match = startTagRE.exec(templateContent)) !== null) {
+        const [fullMatch, tagName, attributes] = match;
+        if (!isHTMLTag(tagName)) continue;
+        if (attributes.includes('data-vtjump')) continue;
 
-        function traverseNode(node: any) {
-          if (node.type === 1 && isHTMLTag(node.tag)) {
-            const startLine = templateStartLine + node.loc.start.line - 1;
-            const endLine = templateStartLine + node.loc.end.line - 1;
-            if (template && template.loc) {
-              const start = template.loc.start.offset + node.loc.start.offset;
-              s.appendLeft(
-                start + node.tag.length + 1,
-                ` data-start-line="${startLine}" data-end-line="${endLine}" data-file="${id}"`
-              );
-            }
-          }
+        // 计算当前标签在源文件中的位置
+        const tagOffset = templateStartOffset + match.index;
+        const contentBeforeTag = code.slice(0, tagOffset);
+        const currentLine = contentBeforeTag.split('\n').length;
 
-          if (node.children) {
-            node.children.forEach((child: any) => traverseNode(child));
-          }
-        }
+        // 生成唯一ID
+        const vtjumpId = generateId(id, currentLine);
 
-        if (compiled.ast) {
-          compiled.ast.children.forEach((node: any) => traverseNode(node));
-        }
-
-        return {
-          code: s.toString(),
-          map: s.generateMap({ hires: true }),
-        };
+        // 在标签结束之前插入属性
+        const insertPos = tagOffset + tagName.length + 1;
+        ms.appendLeft(insertPos, ` data-vtjump="${vtjumpId}"`);
       }
+
+      return {
+        code: ms.toString(),
+        map: ms.generateMap()
+      };
     },
-    transformIndexHtml(html: string) {
+    transformIndexHtml(html) {
       const ms = new MagicString(html);
       const bodyMatch = html.match(/<\/body>/i);
       if (bodyMatch) {
@@ -111,6 +160,6 @@ const vtjump = (options: VTJumpOptions = {}): Plugin => {
       };
     },
   };
-}
+};
 
 export default vtjump;

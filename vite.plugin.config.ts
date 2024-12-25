@@ -17,7 +17,7 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['vite', '@vue/compiler-sfc', 'magic-string'],
+      external: ['vite', '@vue/compiler-sfc', 'magic-string', 'child_process'],
     },
     emptyOutDir: false,
   },
