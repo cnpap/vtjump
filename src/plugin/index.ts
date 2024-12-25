@@ -10,14 +10,14 @@ import MagicString from 'magic-string';
 const locationMap = new Map<string, { file: string; startLine: number; endLine: number }>();
 let idCounter = 0;
 
-function generateId(filePath: string, line: number): string {
+function generateId(filePath: string, line: number): { id: string; line: number } {
   const id = `vtj-${++idCounter}`;
   locationMap.set(id, {
     file: filePath,
     startLine: line,
     endLine: line
   });
-  return id;
+  return { id, line };
 }
 
 const createOverlayStyles = () => `
@@ -132,12 +132,12 @@ const vtjump = (options: VTJumpOptions = {}): Plugin => {
         const contentBeforeTag = code.slice(0, tagOffset);
         const currentLine = contentBeforeTag.split('\n').length;
 
-        // 生成唯一ID
-        const vtjumpId = generateId(id, currentLine);
+        // 生成唯一ID和行号
+        const { id: vtjumpId, line } = generateId(id, currentLine);
 
         // 在标签结束之前插入属性
         const insertPos = tagOffset + tagName.length + 1;
-        ms.appendLeft(insertPos, ` data-vtjump="${vtjumpId}"`);
+        ms.appendLeft(insertPos, ` data-vtjump="${vtjumpId}" data-vtjump-line="${line}" data-vtjump-file="${id}"`);
       }
 
       return {
