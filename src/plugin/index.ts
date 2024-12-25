@@ -4,6 +4,7 @@ import { parse } from '@vue/compiler-sfc';
 import styleRaw from '@client/client-style.css?raw';
 import scriptRaw from '@client/client-script.js?raw';
 import child_process from 'child_process';
+import MagicString from 'magic-string';
 
 // 存储位置映射关系
 const locationMap = new Map<string, { file: string; startLine: number; endLine: number }>();
