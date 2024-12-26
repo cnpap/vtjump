@@ -150,10 +150,9 @@ import './styles.css';
     setTimeout(() => toast.remove(), 1800);
 
     try {
-      const baseUrl = (window as any).__VTJUMP_BASE_URL || '';
       const protocol = config.ide || 'vscode';
       // 跳转时使用完整路径
-      const url = `${baseUrl}${protocol}://file/${vtjumpFile}:${vtjumpLine}`;
+      const url = `${protocol}://file/${vtjumpFile}:${vtjumpLine}`;
       window.open(url);
     } catch (error) {
       console.error('Failed to execute jump:', error);

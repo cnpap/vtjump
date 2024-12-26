@@ -46,7 +46,10 @@ const vtjump = (options: VTJumpOptions = {}): Plugin => {
       
       server.middlewares.use(async (req, res, next) => {
         if (req.url === '/__vtjump') {
-          if (req.method === 'GET') {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+          if (req.method === 'GET' || req.method === 'OPTIONS') {
             res.setHeader('Content-Type', 'application/json');
             res.end('__vtjump');
             return;
