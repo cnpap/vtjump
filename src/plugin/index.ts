@@ -46,6 +46,11 @@ const vtjump = (options: VTJumpOptions = {}): Plugin => {
       
       server.middlewares.use(async (req, res, next) => {
         if (req.url === '/__vtjump') {
+          if (req.method === 'GET') {
+            res.setHeader('Content-Type', 'application/json');
+            res.end('__vtjump');
+            return;
+          }
           const chunks: Buffer[] = [];
           req.on('data', chunk => chunks.push(chunk));
           req.on('end', () => {

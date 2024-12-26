@@ -11,7 +11,9 @@ import './styles.css';
 
   async function fetchConfig(): Promise<void> {
     try {
-      const response = await fetch('/__vtjump', {
+      // 获取自定义的基础 URL，默认为当前域名
+      const baseUrl = (window as any).__VTJUMP_BASE_URL || '';
+      const response = await fetch(`${baseUrl}/__vtjump`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,9 +150,10 @@ import './styles.css';
     setTimeout(() => toast.remove(), 1800);
 
     try {
+      const baseUrl = (window as any).__VTJUMP_BASE_URL || '';
       const protocol = config.ide || 'vscode';
       // 跳转时使用完整路径
-      const url = `${protocol}://file/${vtjumpFile}:${vtjumpLine}`;
+      const url = `${baseUrl}${protocol}://file/${vtjumpFile}:${vtjumpLine}`;
       window.open(url);
     } catch (error) {
       console.error('Failed to execute jump:', error);
