@@ -63,7 +63,8 @@ const vtjump = (options: VTJumpOptions = {}): Plugin => {
             if (getConfig) {
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify({
-                ide: options.protocol || 'vscode',
+                protocol: options.protocol || 'vscode',
+                clientSideOpen: options.clientSideOpen || false,
                 workingDir: process.cwd()
               }));
               return;
@@ -91,14 +92,17 @@ const vtjump = (options: VTJumpOptions = {}): Plugin => {
                 res.end(JSON.stringify({ url: `${protocol}://file/${filePath}` }));
               } else {
                 // 服务器端处理跳转
-                const url = `${protocol}://file/${filePath}`;
-
-                // 首先尝试使用系统命令打开
-                const command = process.platform === 'win32' ? 
-                  `start ${url}` : 
-                  process.platform === 'darwin' ? 
-                    `open "${url}"` : 
-                    `xdg-open "${url}"`;
+                let command = '';
+                if (process.platform === 'win32') {
+                  const url = `${protocol}://file/${filePath}`;
+                  command = `start ${url}`;
+                } else {
+                  if (['windsurf', 'cursor'].includes(protocol)) {
+                    command = `${protocol} -g "${filePath}:${location.startLine}"`;
+                  } else if (protocol === 'vscode') {
+                    command = `code -g "${filePath}:${location.startLine}"`;
+                  }
+                }
                 
                 child_process.exec(command, (error) => {
                   if (error) {

@@ -1,3 +1,4 @@
+import type { VTJumpOptions } from '../plugin/types';
 import './styles.css';
 
 (() => {
@@ -7,19 +8,22 @@ import './styles.css';
   let currentTarget: HTMLElement | null = null;
   let lastHoverTarget: HTMLElement | null = null;
   let lastValidTarget: HTMLElement | null = null;
-  let config: { ide?: string; workingDir?: string } | null = null;
+  let config: { workingDir?: string } & VTJumpOptions | null = null;
+  const baseUrl = (window as any).__VTJUMP_BASE_URL || '';
+  const api = async (body: Record<string, any>) => {
+    return fetch(`${baseUrl}/__vtjump`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    });
+  }
 
   async function fetchConfig(): Promise<void> {
     try {
       // 获取自定义的基础 URL，默认为当前域名
-      const baseUrl = (window as any).__VTJUMP_BASE_URL || '';
-      const response = await fetch(`${baseUrl}/__vtjump`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ getConfig: true })
-      });
+      const response = await api({ getConfig: true });
       
       if (response.ok) {
         config = await response.json();
@@ -150,10 +154,14 @@ import './styles.css';
     setTimeout(() => toast.remove(), 1800);
 
     try {
-      const protocol = config.ide || 'vscode';
-      // 跳转时使用完整路径
-      const url = `${protocol}://file/${vtjumpFile}:${vtjumpLine}`;
-      window.open(url);
+      if (config.clientSideOpen) {
+        const protocol = config.protocol || 'vscode';
+        // 跳转时使用完整路径
+        const url = `${protocol}://file/${vtjumpFile}:${vtjumpLine}`;
+        window.open(url);
+      } else {
+        await api({ id: vtjumpId });
+      }
     } catch (error) {
       console.error('Failed to execute jump:', error);
     }
