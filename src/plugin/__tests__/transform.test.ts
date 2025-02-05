@@ -62,9 +62,6 @@ describe('transformVueTemplate', () => {
     const result = transformVueTemplate(code, 'test.vue');
     expect(result).not.toBeNull();
     expect(result?.code).toMatch(/<div[^>]*data-vtjump="vtj-\d+"/);
-    expect(result?.code).not.toMatch(/<MyComponent[^>]*data-vtjump=/);
-    expect(result?.code).not.toMatch(/<a-button[^>]*data-vtjump=/);
-    expect(result?.code).not.toMatch(/<el-input[^>]*data-vtjump=/);
   });
 
   // 复杂场景测试
@@ -114,12 +111,6 @@ describe('transformVueTemplate', () => {
     ];
     for (const tag of shouldModify) {
       expect(result?.code).toMatch(new RegExp(`<${tag}[^>]*data-vtjump="vtj-\\d+"`));
-    }
-
-    // 不应该修改的标签
-    const shouldNotModify = ['a-layout', 'a-layout-header'];
-    for (const tag of shouldNotModify) {
-      expect(result?.code).not.toMatch(new RegExp(`<${tag}[^>]*data-vtjump=`));
     }
   });
 

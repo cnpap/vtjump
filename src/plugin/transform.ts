@@ -1,59 +1,14 @@
-import { parse } from '@vue/compiler-sfc';
+import { parse, compileTemplate } from '@vue/compiler-sfc';
 import MagicString from 'magic-string';
 import { generateId } from './util';
+import { NodeTypes } from '@vue/compiler-core';
+import type { ElementNode, NodeTransform, TemplateChildNode } from '@vue/compiler-core';
 
-function isHTMLTag(tag: string): boolean {
-  // 基础 HTML 标签列表
-  const basicHtmlTags = [
-    'div',
-    'span',
-    'p',
-    'a',
-    'img',
-    'button',
-    'input',
-    'label',
-    'select',
-    'option',
-    'form',
-    'table',
-    'tr',
-    'td',
-    'th',
-    'ul',
-    'ol',
-    'li',
-    'h1',
-    'h2',
-    'h3',
-    'h4',
-    'h5',
-    'h6',
-    'header',
-    'footer',
-    'main',
-    'section',
-    'article',
-    'nav',
-    'aside',
-    'figure',
-    'figcaption',
-    'video',
-    'audio',
-    'source',
-    'canvas',
-    'textarea',
-    'pre',
-    'code',
-    'br',
-    'hr',
-  ];
-  return basicHtmlTags.includes(tag.toLowerCase());
-}
-
-function isVueComponent(tag: string): boolean {
-  // Vue组件通常以大写字母开头或包含连字符
-  return /^[A-Z]/.test(tag) || tag.includes('-');
+function hasVtJumpAttribute(attributes: string): boolean {
+  // 更严格地检查是否已经存在 vtjump 相关属性
+  return /\bdata-vtjump(?:=|\s|$)|\bdata-vtjump-line(?:=|\s|$)|\bdata-vtjump-file(?:=|\s|$)/.test(
+    attributes
+  );
 }
 
 export function transformVueTemplate(code: string, id: string) {
@@ -65,42 +20,79 @@ export function transformVueTemplate(code: string, id: string) {
   const ms = new MagicString(code);
   const templateContent = descriptor.template.content;
   const templateStartOffset = descriptor.template.loc.start.offset;
+  const processedNodes = new Set<string>(); // 用于跟踪已处理的节点
 
-  // 匹配开始标签，包括自闭合标签
-  const startTagRE = /<([a-zA-Z][a-zA-Z0-9-]*)\s*([^>]*?)(\/)?>/gi;
-  let match;
-  let hasChanges = false;
+  // 创建一个处理节点的函数
+  const processNode = (node: TemplateChildNode) => {
+    if (node.type === NodeTypes.ELEMENT) {
+      const element = node as ElementNode;
+      const nodeKey = `${element.loc.start.offset}-${element.loc.end.offset}`;
 
-  while ((match = startTagRE.exec(templateContent)) !== null) {
-    const [fullMatch, tagName, attributes, selfClosing] = match;
+      // 如果节点已经处理过，直接返回
+      if (processedNodes.has(nodeKey)) {
+        return;
+      }
 
-    // 跳过Vue组件和已有data-vtjump属性的标签
-    if (isVueComponent(tagName) || attributes.includes('data-vtjump')) continue;
+      // 计算标签在源码中的位置
+      const startOffset = templateStartOffset + element.loc.start.offset;
+      const endOffset = templateStartOffset + element.loc.end.offset;
+      const contentBeforeTag = code.slice(0, startOffset);
+      const currentLine = contentBeforeTag.split('\n').length;
 
-    // 只处理基础HTML标签
-    if (!isHTMLTag(tagName)) continue;
+      // 获取标签的原始内容
+      const originalTag = code.slice(startOffset, endOffset);
+      const tagMatch = /<([a-zA-Z][a-zA-Z0-9-]*)\s*([^>]*?)(\/)?>/i.exec(originalTag);
 
-    // 计算当前标签在源文件中的位置
-    const tagOffset = templateStartOffset + match.index;
-    const contentBeforeTag = code.slice(0, tagOffset);
-    const currentLine = contentBeforeTag.split('\n').length;
+      if (tagMatch) {
+        const [fullMatch, tagName, attributes] = tagMatch;
 
-    // 生成唯一ID和行号
-    const { id: vtjumpId, line } = generateId(id, currentLine);
+        // 检查是否已经有 vtjump 相关属性
+        if (!hasVtJumpAttribute(attributes)) {
+          const { id: vtjumpId, line } = generateId(id, currentLine);
+          const vtjumpAttr = ` data-vtjump="${vtjumpId}" data-vtjump-line="${line}" data-vtjump-file="${id}"`;
 
-    // 确定插入位置：在结束的 > 或 /> 之前
-    const insertPos = tagOffset + fullMatch.length - (selfClosing ? 2 : 1);
-    const vtjumpAttr = ` data-vtjump="${vtjumpId}" data-vtjump-line="${line}" data-vtjump-file="${id}"`;
+          // 找到标签结束的位置
+          const insertPos = startOffset + tagMatch.index + fullMatch.length - (tagMatch[3] ? 2 : 1);
+          ms.appendLeft(insertPos, vtjumpAttr);
 
-    ms.appendLeft(insertPos, vtjumpAttr);
-    hasChanges = true;
+          // 标记节点已处理
+          processedNodes.add(nodeKey);
+        }
+      }
+
+      // 递归处理子节点
+      if (element.children) {
+        element.children.forEach((child) => {
+          if (child.type === NodeTypes.ELEMENT) {
+            processNode(child);
+          }
+        });
+      }
+    }
+  };
+
+  // 使用编译器解析整个模板
+  const result = compileTemplate({
+    source: templateContent,
+    filename: id,
+    id: id,
+    compilerOptions: {
+      nodeTransforms: [processNode as NodeTransform],
+    },
+  });
+
+  if (result.errors && result.errors.length) {
+    console.error(result.errors);
+    return null;
   }
 
-  // 只有在实际进行了修改时才返回新代码
-  return hasChanges
-    ? {
-        code: ms.toString(),
-        map: ms.generateMap(),
-      }
-    : null;
+  // 检查是否有修改
+  if (ms.hasChanged()) {
+    return {
+      code: ms.toString(),
+      map: ms.generateMap(),
+    };
+  }
+
+  return null;
 }

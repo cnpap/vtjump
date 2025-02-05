@@ -16,6 +16,9 @@ importers:
       '@types/node':
         specifier: ^20.17.8
         version: 20.17.8
+      '@vue/compiler-core':
+        specifier: ^3.5.13
+        version: 3.5.13
       '@vue/compiler-sfc':
         specifier: ^3.5.13
         version: 3.5.13
