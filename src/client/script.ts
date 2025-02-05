@@ -8,7 +8,7 @@ import './styles.css';
   let currentTarget: HTMLElement | null = null;
   let lastHoverTarget: HTMLElement | null = null;
   let lastValidTarget: HTMLElement | null = null;
-  let config: { workingDir?: string } & VTJumpOptions | null = null;
+  let config: ({ workingDir?: string } & VTJumpOptions) | null = null;
   const baseUrl = (window as any).__VTJUMP_BASE_URL || '';
   const api = async (body: Record<string, any>) => {
     return fetch(`${baseUrl}/__vtjump`, {
@@ -16,15 +16,15 @@ import './styles.css';
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
-  }
+  };
 
   async function fetchConfig(): Promise<void> {
     try {
       // 获取自定义的基础 URL，默认为当前域名
       const response = await api({ getConfig: true });
-      
+
       if (response.ok) {
         config = await response.json();
       }
@@ -116,11 +116,15 @@ import './styles.css';
     `;
   }
 
-  async function executeJump(target: HTMLElement, clientX: number | null = null, clientY: number | null = null): Promise<void> {
+  async function executeJump(
+    target: HTMLElement,
+    clientX: number | null = null,
+    clientY: number | null = null
+  ): Promise<void> {
     const vtjumpId = target.getAttribute('data-vtjump');
     const vtjumpLine = target.getAttribute('data-vtjump-line');
     const vtjumpFile = target.getAttribute('data-vtjump-file');
-    
+
     if (!vtjumpId || !vtjumpLine || !vtjumpFile || !config) {
       return;
     }
@@ -172,7 +176,10 @@ import './styles.css';
 
   document.addEventListener('keydown', (e: KeyboardEvent) => {
     // Support Control key and Command key (macOS)
-    if (e.key === 'Control' || (e.key === 'Meta' && /Mac|iPod|iPhone|iPad/.test(navigator.platform))) {
+    if (
+      e.key === 'Control' ||
+      (e.key === 'Meta' && /Mac|iPod|iPhone|iPad/.test(navigator.platform))
+    ) {
       isCtrlPressed = true;
       document.body.style.cursor = 'crosshair';
       if (lastHoverTarget) {
@@ -190,7 +197,10 @@ import './styles.css';
 
   document.addEventListener('keyup', (e: KeyboardEvent) => {
     // Support Control key and Command key (macOS)
-    if (e.key === 'Control' || (e.key === 'Meta' && /Mac|iPod|iPhone|iPad/.test(navigator.platform))) {
+    if (
+      e.key === 'Control' ||
+      (e.key === 'Meta' && /Mac|iPod|iPhone|iPad/.test(navigator.platform))
+    ) {
       isCtrlPressed = false;
       document.body.style.cursor = '';
       if (overlay) {
@@ -240,7 +250,7 @@ import './styles.css';
       e.preventDefault();
       e.stopPropagation();
       executeJump(currentTarget, e.clientX, e.clientY);
-      
+
       // Reset state after jump
       isCtrlPressed = false;
       document.body.style.cursor = '';
@@ -257,5 +267,4 @@ import './styles.css';
       lastValidTarget = null;
     }
   });
-
 })();

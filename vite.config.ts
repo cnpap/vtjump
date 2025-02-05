@@ -20,8 +20,8 @@ export default defineConfig({
           }
           return assetInfo.name!;
         },
-      }
+      },
     },
     emptyOutDir: false,
-  }
+  },
 });

@@ -23,7 +23,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@client': resolve(__dirname, 'dist/client')
-    }
-  }
+      '@client': resolve(__dirname, 'dist/client'),
+    },
+  },
 });

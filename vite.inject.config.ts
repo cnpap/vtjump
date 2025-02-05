@@ -12,7 +12,7 @@ export default defineConfig({
           return `inject/vtjump.iife.js`;
         }
         return `inject/vtjump.${format}.js`;
-      }
+      },
     },
     outDir: 'dist',
     emptyOutDir: false,
@@ -21,8 +21,8 @@ export default defineConfig({
         // 为 IIFE 格式设置全局变量名
         name: 'vtjump',
         extend: false,
-        format: 'iife'
-      }
-    }
-  }
+        format: 'iife',
+      },
+    },
+  },
 });

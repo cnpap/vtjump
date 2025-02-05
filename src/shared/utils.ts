@@ -21,13 +21,15 @@ export function createJumpUrl(file: string, line: string, options: VTJumpOptions
 }
 
 export function openUrl(url: string) {
-    // 直接使用 window.open，不使用隐藏的 iframe
-    try {
-        window.open(url, '_blank');
-    } catch (e) {
-        console.warn('Failed to open URL:', url, e);
-        showErrorToast('Failed to open URL. Please make sure you have the appropriate IDE protocol handler installed.');
-    }
+  // 直接使用 window.open，不使用隐藏的 iframe
+  try {
+    window.open(url, '_blank');
+  } catch (e) {
+    console.warn('Failed to open URL:', url, e);
+    showErrorToast(
+      'Failed to open URL. Please make sure you have the appropriate IDE protocol handler installed.'
+    );
+  }
 }
 
 export function showErrorToast(message: string) {

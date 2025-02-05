@@ -11,19 +11,19 @@
 </template>
 
 <script setup lang="ts">
-import NestedButton from './nested/Button.vue'
+import NestedButton from './nested/Button.vue';
 
 const props = defineProps<{
-  title: string
-  buttonLabel: string
-}>()
+  title: string;
+  buttonLabel: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'action'): void
-}>()
+  (e: 'action'): void;
+}>();
 
 function handleButtonClick() {
-  emit('action')
+  emit('action');
 }
 </script>
 

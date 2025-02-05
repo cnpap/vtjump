@@ -6,15 +6,15 @@
 
 <script setup lang="ts">
 const props = defineProps<{
-  label: string
-}>()
+  label: string;
+}>();
 
 const emit = defineEmits<{
-  (e: 'click'): void
-}>()
+  (e: 'click'): void;
+}>();
 
 function handleClick() {
-  emit('click')
+  emit('click');
 }
 </script>
 

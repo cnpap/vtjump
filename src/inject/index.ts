@@ -37,7 +37,11 @@ function initialize(options: VTJumpOptions = {}) {
   // 注入样式
   injectStyles(styles);
 
-  function executeJump(target: HTMLElement, clientX: number | null = null, clientY: number | null = null) {
+  function executeJump(
+    target: HTMLElement,
+    clientX: number | null = null,
+    clientY: number | null = null
+  ) {
     const startLine = target.getAttribute('data-start-line');
     const file = target.getAttribute('data-file');
     if (startLine && file) {
@@ -54,7 +58,7 @@ function initialize(options: VTJumpOptions = {}) {
 
   function showOverlay(target: HTMLElement) {
     if (!target) return;
-    
+
     const startLine = target.getAttribute('data-start-line');
     const endLine = target.getAttribute('data-end-line');
     const file = target.getAttribute('data-file');
@@ -82,7 +86,7 @@ function initialize(options: VTJumpOptions = {}) {
       overlay.style.height = rect.height + 'px';
 
       const fileName = getFileName(file);
-      
+
       info.innerHTML = `
         ${createInfoIcon()}
         <div class="vtjump-info-text">
@@ -127,7 +131,7 @@ function initialize(options: VTJumpOptions = {}) {
         const file = lastHoverTarget.getAttribute('data-file');
         if (startLine && endLine && file) {
           currentTarget = lastHoverTarget;
-          lastValidTarget = lastHoverTarget;  
+          lastValidTarget = lastHoverTarget;
           showOverlay(lastHoverTarget);
         }
       }
@@ -145,16 +149,16 @@ function initialize(options: VTJumpOptions = {}) {
   document.addEventListener('mouseover', (e) => {
     const target = e.target as HTMLElement;
     lastHoverTarget = target;
-    
+
     if (!isCtrlPressed) return;
 
     const startLine = target.getAttribute('data-start-line');
     const endLine = target.getAttribute('data-end-line');
     const file = target.getAttribute('data-file');
-    
+
     if (startLine && endLine && file) {
       currentTarget = target;
-      lastValidTarget = target;  
+      lastValidTarget = target;
       showOverlay(target);
     }
   });
@@ -188,5 +192,5 @@ function initialize(options: VTJumpOptions = {}) {
 
 // 导出对象而不是函数
 export default {
-  initialize
+  initialize,
 };

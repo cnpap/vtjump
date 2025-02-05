@@ -27,7 +27,10 @@
     "postversion": "git push && git push --tags",
     "publish:patch": "npm version patch && npm publish",
     "publish:minor": "npm version minor && npm publish",
-    "publish:major": "npm version major && npm publish"
+    "publish:major": "npm version major && npm publish",
+    "test": "vitest src/plugin/__tests__/",
+    "test:coverage": "vitest run --coverage src/plugin/__tests__/",
+    "test:watch": "vitest watch src/plugin/__tests__/"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.0.1",
@@ -43,7 +46,8 @@
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
-    "vite-plugin-dts": "^3.7.3"
+    "vite-plugin-dts": "^3.7.3",
+    "vitest": "^0.32.2"
   },
   "peerDependencies": {
     "vite": "^5.0.0 || ^6.0.0"
